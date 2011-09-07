@@ -10,8 +10,9 @@ $(document).ready(function() {
     module("localStorage", {
         setup: function(){
             killStorage('libraryStore');
+            this.localStorage = new window.Store("libraryStore");
             this.Library = Backbone.Collection.extend({
-                localStorage: new window.Store("libraryStore")
+                localStorage: this.localStorage,
             });
             this.library = new this.Library();
         },
@@ -50,13 +51,29 @@ $(document).ready(function() {
     test("given a model just created, when its id is updated then previous id value should be available to listeners", function() {
         var ids = {};
         var book = this.library.create(attrs);
-		var id = book.get('id');
+        var id = book.get('id');
         this.library.bind('change:id', function(model, collection) {
             ids = { before: model.previous('id'), after: model.get('id') };
         });
-		book.set({id: 1});
+        book.set({id: 1});
         equals(ids.after, 1, 'new id is available');
         equals(ids.before, id, 'previous id is available too');
+    });
+
+    test("given a model just created, when its id is updated and the model is saved then its id should be updated in localStorage too", function() {
+        var book = this.library.create(attrs);
+        var guid = book.get('id');
+		var uid = 1;
+        book.set({id: uid});
+        ok(this.library.get(guid) == null, "model is not readable by guid in memory");
+        ok(this.library.get(uid) != null, "model is readable by uid in memory");
+        ok(this.localStorage.find({id: guid}) != null, "model is readable by guid in localStorage");
+        ok(this.localStorage.find({id: uid}) == null, "model is not readable by uid in localStorage");
+        book.save();
+        ok(this.library.get(guid) == null, "model is not readable by guid in memory");
+        ok(this.library.get(uid) != null, "model is readable by uid in memory");
+        ok(this.localStorage.find({id: guid}) == null, "model should not be readable by guid anymore in localStorage");
+        ok(this.localStorage.find({id: uid}) != null, "model should be readable by uid in localStorage");
     });
 
 /*

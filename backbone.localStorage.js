@@ -38,6 +38,7 @@ _.extend(Store.prototype, {
   // have an id of it's own.
   create: function(model) {
     if (!model.id) model.set({id: guid()});
+    model._localStorageId = model.id;
     localStorage.setItem(this.name+"-"+model.id, JSON.stringify(model));
     this.records.push(model.id.toString());
     this.save();
@@ -46,6 +47,10 @@ _.extend(Store.prototype, {
 
   // Update a model by replacing its copy in `this.data`.
   update: function(model) {
+      if(model._localStorageId && model._localStorageId != model.id) {
+        this.destroy({id: model._localStorageId});
+        model._localStorageId = model.id;
+    }
     localStorage.setItem(this.name+"-"+model.id, JSON.stringify(model));
     if (!_.include(this.records, model.id.toString())) this.records.push(model.id.toString()); this.save();
     return model;

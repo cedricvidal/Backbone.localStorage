@@ -1,18 +1,20 @@
 $(document).ready(function() {
-    module("localStorage");
 
     window.killStorage = function (name) {
-		var keys = _.select(_.keys(localStorage), function(key) { return key.indexOf(name) == 0; });
-		_.each(keys, function(key) {
-			localStorage.removeItem(key);
-		});
+        var keys = _.select(_.keys(localStorage), function(key) { return key.indexOf(name) == 0; });
+        _.each(keys, function(key) {
+            localStorage.removeItem(key);
+        });
     };
-    killStorage('libraryStore');
 
-    var Library = Backbone.Collection.extend({
-        localStorage: new window.Store("libraryStore")
-        
-        // is the problem with my library that is has no model reference?
+    module("localStorage", {
+        setup: function(){
+            killStorage('libraryStore');
+            this.Library = Backbone.Collection.extend({
+                localStorage: new window.Store("libraryStore")
+            });
+            this.library = new this.Library();
+        },
     });
 
     var attrs = {
@@ -20,33 +22,41 @@ $(document).ready(function() {
         author : 'Bill Shakespeare',
         length : 123
     };
-    
-    var library = new Library();
 
-    // Make sure there is no library collection when we start
-    
     // read from the library object that shouldn't exist when we start
     test("collection", function() {
-        killStorage('libraryStore');
-        library.fetch();
-        equals(library.length, 0, 'empty read');
-        
-        library.create(attrs);
-        equals(library.length, 1, 'one item added');
-        equals(library.first().get('title'), 'The Tempest', 'title was read');
-        equals(library.first().get('author'), 'Bill Shakespeare', 'author was read');
-        equals(library.first().get('length'), 123, 'length was read');
 
-        library.first().save({id: '1-the-tempest', author: 'William Shakespeare'});
-        equals(library.first().get('id'), '1-the-tempest', 'verify ID update');
-        equals(library.first().get('title'), 'The Tempest', 'verify title is still there');
-        equals(library.first().get('author'), 'William Shakespeare', 'verify author update');
-        equals(library.first().get('length'), 123, 'verify length is still there');
-        library.each(function(book) {
+        this.library.fetch();
+        equals(this.library.length, 0, 'empty read');
+        
+        this.library.create(attrs);
+        equals(this.library.length, 1, 'one item added');
+        equals(this.library.first().get('title'), 'The Tempest', 'title was read');
+        equals(this.library.first().get('author'), 'Bill Shakespeare', 'author was read');
+        equals(this.library.first().get('length'), 123, 'length was read');
+
+        this.library.first().save({id: '1-the-tempest', author: 'William Shakespeare'});
+        equals(this.library.first().get('id'), '1-the-tempest', 'verify ID update');
+        equals(this.library.first().get('title'), 'The Tempest', 'verify title is still there');
+        equals(this.library.first().get('author'), 'William Shakespeare', 'verify author update');
+        equals(this.library.first().get('length'), 123, 'verify length is still there');
+        this.library.each(function(book) {
             book.destroy();
         });
-        equals(library.length, 0, 'item was destroyed and library is empty');
+        equals(this.library.length, 0, 'item was destroyed and library is empty');
         
+    });
+
+    test("given a model just created, when its id is updated then previous id value should be available to listeners", function() {
+        var ids = {};
+        var book = this.library.create(attrs);
+		var id = book.get('id');
+        this.library.bind('change:id', function(model, collection) {
+            ids = { before: model.previous('id'), after: model.get('id') };
+        });
+		book.set({id: 1});
+        equals(ids.after, 1, 'new id is available');
+        equals(ids.before, id, 'previous id is available too');
     });
 
 /*
